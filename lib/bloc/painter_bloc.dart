@@ -43,18 +43,78 @@ class PainterBloc extends BlocBase {
   StreamSink<double> get _widthOut => _widthSubject.sink;
   ValueObservable<double> get width => _widthSubject.stream;
 
+  StreamSubscription _firestoreListener;
+  final String _canvasName = 'testCanvas';
+  bool _clearing = false;
+
   PainterBloc() {
     // Publish initial state
     _strokesOut.add(_strokes);
     _colorOut.add(_color);
     _widthOut.add(_width);
 
+    // when firebase stream updates, replace all strokes on screen with
+    final firestoreStream = Firestore.instance
+        .collection('canvases')
+        .document(_canvasName)
+        .collection('strokes')
+        .snapshots();
+
+    _firestoreListener = firestoreStream.listen((querySnapshot) async {
+      final strokesList = querySnapshot.documents.map((doc) {
+        final colour = ColorChangeEventBuilder()
+          ..red = doc['red']
+          ..green = doc['green']
+          ..blue = doc['blue']
+          ..build();
+
+        final List<TouchLocationEvent> locs =
+            (doc['locations'] as List<dynamic>).map((loc) {
+          final locBuilder = TouchLocationEventBuilder();
+          // the double dots weren't working for some reason
+          locBuilder.x = loc['x'];
+          locBuilder.y = loc['y'];
+          return locBuilder.build();
+        }).toList();
+
+        final strokeBuilder = StrokeBuilder();
+        strokeBuilder.color = colour;
+        strokeBuilder.strokeWidth = (doc['strokeWidth'] as double);
+        strokeBuilder.locations = ListBuilder(locs);
+
+        return strokeBuilder.build();
+      }).toList();
+
+      // deleting documents in firestore is slow...
+      if (_clearing) {
+        // if we're still clearing, we wait
+        if (strokesList.length == 0) {
+          _clearing = false;
+        }
+      } else {
+      _strokes = BuiltList<Stroke>();
+      _strokes = BuiltList(strokesList);
+      _strokesOut.add(_strokes);
+      }
+
+    });
+
     // Update state based on events
     _drawEvents.stream.listen((drawEvent) {
       if (drawEvent is ClearEvent) {
+        _clearing = true;
+
         _strokes = BuiltList<Stroke>();
         _locations = BuiltList<TouchLocationEvent>();
         _strokesOut.add(_strokes);
+
+        Firestore.instance
+            .collection('canvases')
+            .document(_canvasName)
+            .collection('strokes')
+            .getDocuments()
+            .then((querySnapshot) => querySnapshot.documents
+                .forEach((document) => document.reference.delete()));
       } else if (drawEvent is ColorChangeEvent) {
         finalizeCurrentStroke();
         _color = drawEvent;
@@ -89,7 +149,7 @@ class PainterBloc extends BlocBase {
       // add the stroke to firebase
       Firestore.instance
           .collection('canvases')
-          .document('testCanvas')
+          .document(_canvasName)
           .collection('strokes')
           .add({
         'strokeWidth': _stroke.strokeWidth,
@@ -114,5 +174,6 @@ class PainterBloc extends BlocBase {
     _strokesSubject.close();
     _colorSubject.close();
     _strokesSubject.close();
+    _firestoreListener.cancel();
   }
 }
