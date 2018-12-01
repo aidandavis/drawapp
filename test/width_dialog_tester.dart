@@ -1,4 +1,4 @@
-import 'package:drawapp/dialogs/width_dialog.dart';
+import 'package:drawappFirebase/dialogs/width_dialog.dart';
 import 'package:flutter/material.dart';
 
 class WidthDialogTester extends StatefulWidget {
