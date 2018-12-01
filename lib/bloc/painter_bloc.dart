@@ -44,12 +44,11 @@ class PainterBloc extends BlocBase {
   ValueObservable<double> get width => _widthSubject.stream;
 
   StreamSubscription _firestoreListener;
-  // final String _canvasName = 'testCanvas';
   int _strokesLeftToClear = 0;
 
-  String canvasName;
-  
-  PainterBloc(this.canvasName) {
+  String roomName;
+
+  PainterBloc(this.roomName) {
     // Publish initial state
     _strokesOut.add(_strokes);
     _colorOut.add(_color);
@@ -57,8 +56,8 @@ class PainterBloc extends BlocBase {
 
     // when firebase stream updates, replace all strokes on screen with
     final firestoreStream = Firestore.instance
-        .collection('canvases')
-        .document(canvasName)
+        .collection('rooms')
+        .document(roomName)
         .collection('strokes')
         .snapshots();
 
@@ -103,8 +102,8 @@ class PainterBloc extends BlocBase {
         _strokesOut.add(_strokes);
 
         Firestore.instance
-            .collection('canvases')
-            .document(canvasName)
+            .collection('rooms')
+            .document(roomName)
             .collection('strokes')
             .getDocuments()
             .then((querySnapshot) {
@@ -145,8 +144,8 @@ class PainterBloc extends BlocBase {
     if (_locations.length > 0) {
       // add the stroke to firebase
       Firestore.instance
-          .collection('canvases')
-          .document(canvasName)
+          .collection('rooms')
+          .document(roomName)
           .collection('strokes')
           .add({
         'strokeWidth': _stroke.strokeWidth,
