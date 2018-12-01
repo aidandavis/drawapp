@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:built_collection/built_collection.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:rxdart/rxdart.dart';
 import '../models/clear.dart';
@@ -85,8 +86,24 @@ class PainterBloc extends BlocBase {
 
   void finalizeCurrentStroke() {
     if (_locations.length > 0) {
+      // add the stroke to firebase
+      Firestore.instance
+          .collection('canvases')
+          .document('testCanvas')
+          .collection('strokes')
+          .add({
+        'strokeWidth': _stroke.strokeWidth,
+        'red': _stroke.color.red,
+        'green': _stroke.color.green,
+        'blue': _stroke.color.blue,
+        'locations': _stroke.locations
+            .map((l) => {
+                  'x': l.x,
+                  'y': l.y,
+                })
+            .toList(),
+      });
       _strokes = (_strokes.toBuilder()..add(_stroke)).build();
-      _strokesOut.add(_strokes);
       _locations = BuiltList<TouchLocationEvent>();
     }
   }
