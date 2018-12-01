@@ -44,10 +44,12 @@ class PainterBloc extends BlocBase {
   ValueObservable<double> get width => _widthSubject.stream;
 
   StreamSubscription _firestoreListener;
-  final String _canvasName = 'testCanvas';
-  bool _clearing = false;
+  // final String _canvasName = 'testCanvas';
+  int _strokesLeftToClear = 0;
 
-  PainterBloc() {
+  String canvasName;
+  
+  PainterBloc(this.canvasName) {
     // Publish initial state
     _strokesOut.add(_strokes);
     _colorOut.add(_color);
@@ -56,7 +58,7 @@ class PainterBloc extends BlocBase {
     // when firebase stream updates, replace all strokes on screen with
     final firestoreStream = Firestore.instance
         .collection('canvases')
-        .document(_canvasName)
+        .document(canvasName)
         .collection('strokes')
         .snapshots();
 
@@ -86,35 +88,30 @@ class PainterBloc extends BlocBase {
       }).toList();
 
       // deleting documents in firestore is slow...
-      if (_clearing) {
-        // if we're still clearing, we wait
-        if (strokesList.length == 0) {
-          _clearing = false;
-        }
-      } else {
-      _strokes = BuiltList<Stroke>();
-      _strokes = BuiltList(strokesList);
-      _strokesOut.add(_strokes);
+      if (_strokesLeftToClear == 0) {
+        _strokes = BuiltList<Stroke>();
+        _strokes = BuiltList(strokesList);
+        _strokesOut.add(_strokes);
       }
-
     });
 
     // Update state based on events
     _drawEvents.stream.listen((drawEvent) {
       if (drawEvent is ClearEvent) {
-        _clearing = true;
-
         _strokes = BuiltList<Stroke>();
         _locations = BuiltList<TouchLocationEvent>();
         _strokesOut.add(_strokes);
 
         Firestore.instance
             .collection('canvases')
-            .document(_canvasName)
+            .document(canvasName)
             .collection('strokes')
             .getDocuments()
-            .then((querySnapshot) => querySnapshot.documents
-                .forEach((document) => document.reference.delete()));
+            .then((querySnapshot) {
+          _strokesLeftToClear = querySnapshot.documents.length;
+          querySnapshot.documents.forEach((document) =>
+              document.reference.delete().then((_) => _strokesLeftToClear--));
+        });
       } else if (drawEvent is ColorChangeEvent) {
         finalizeCurrentStroke();
         _color = drawEvent;
@@ -149,7 +146,7 @@ class PainterBloc extends BlocBase {
       // add the stroke to firebase
       Firestore.instance
           .collection('canvases')
-          .document(_canvasName)
+          .document(canvasName)
           .collection('strokes')
           .add({
         'strokeWidth': _stroke.strokeWidth,

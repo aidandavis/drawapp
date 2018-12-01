@@ -13,9 +13,11 @@ class DrawApp extends StatelessWidget {
         ),
         body: BlocProvider<PainterBloc>(
           child: DrawPage(),
-          bloc: PainterBloc(),
+          bloc: PainterBloc('testCanvas'),
         ),
       ),
     );
   }
 }
+
+
