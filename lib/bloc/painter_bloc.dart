@@ -107,7 +107,9 @@ class PainterBloc extends BlocBase {
             .collection('strokes')
             .getDocuments()
             .then((querySnapshot) {
-          _strokesLeftToClear = querySnapshot.documents.length;
+          // record number of strokes to delete
+          _strokesLeftToClear += querySnapshot.documents.length;
+          // delete the stroke and subtract from the counter
           querySnapshot.documents.forEach((document) =>
               document.reference.delete().then((_) => _strokesLeftToClear--));
         });
