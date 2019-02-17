@@ -92,18 +92,17 @@ class _chooseRoomState extends State<ChooseRoom> {
             ? Text('Room $_chosenRoom')
             : Text('Enter or Create a Room'),
         centerTitle: true,
-        actions: _chosenRoom != null
-            ? <Widget>[
-                IconButton(
-                  icon: Icon(Icons.exit_to_app),
-                  onPressed: () {
-                    setState(() {
-                      _chosenRoom = null;
-                    });
-                  },
-                ),
-              ]
+        leading: _chosenRoom != null
+            ? IconButton(
+                icon: Icon(Icons.arrow_back),
+                onPressed: () {
+                  setState(() {
+                    _chosenRoom = null;
+                  });
+                },
+              )
             : null,
+        actions: null, // share button here
       ),
       body: _chosenRoom != null
           ? BlocProvider<PainterBloc>(
